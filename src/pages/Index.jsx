@@ -8,7 +8,7 @@ import ItemDetails from "../components/ItemDetails";
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { templates } from "../utils/templateRegistry";
-import { FiEdit, FiFileText, FiTrash2 } from "react-icons/fi";
+import { FiEdit, FiFileText, FiTrash2, FiX } from "react-icons/fi";
 import { RefreshCw } from "lucide-react";
 
 const generateRandomInvoiceNumber = () => {
@@ -70,11 +70,15 @@ const Index = () => {
     logo: null,
   });
   const [items, setItems] = useState([]);
-  const [taxPercentage, settaxPercentage] = useState(0);
+  const [taxType, setTaxType] = useState('percentage'); // 'percentage' or 'flat'
+  const [taxValue, setTaxValue] = useState(0);
   const [taxAmount, setTaxAmount] = useState(0);
   const [subTotal, setSubTotal] = useState(0);
   const [grandTotal, setGrandTotal] = useState(0);
   const [notes, setNotes] = useState("");
+  const [discountType, setDiscountType] = useState('percentage'); // 'percentage' or 'flat'
+  const [discountValue, setDiscountValue] = useState(0);
+  const [shippingCharge, setShippingCharge] = useState(0);
 
   // Create formData object for BillToSection
   const formData = {
@@ -83,30 +87,54 @@ const Index = () => {
     invoice,
     yourCompany,
     items,
-    taxPercentage,
+    taxType,
+    taxValue,
     taxAmount,
     subTotal,
     grandTotal,
     notes,
     selectedCurrency,
+    discountType,
+    discountValue,
+    shippingCharge
   };
 
   const setFormData = (updater) => {
     const newData = typeof updater === 'function' ? updater(formData) : updater;
-    
+
     if (newData.billTo !== formData.billTo) setBillTo(newData.billTo);
     if (newData.shipTo !== formData.shipTo) setShipTo(newData.shipTo);
     if (newData.invoice !== formData.invoice) setInvoice(newData.invoice);
     if (newData.yourCompany !== formData.yourCompany) setYourCompany(newData.yourCompany);
     if (newData.items !== formData.items) setItems(newData.items);
-    if (newData.taxPercentage !== formData.taxPercentage) settaxPercentage(newData.taxPercentage);
+    if (newData.taxType !== formData.taxType) setTaxType(newData.taxType);
+    if (newData.taxValue !== formData.taxValue) setTaxValue(newData.taxValue);
     if (newData.notes !== formData.notes) setNotes(newData.notes);
     if (newData.selectedCurrency !== formData.selectedCurrency) setSelectedCurrency(newData.selectedCurrency);
+    if (newData.discountType !== formData.discountType) setDiscountType(newData.discountType);
+    if (newData.discountValue !== formData.discountValue) setDiscountValue(newData.discountValue);
+    if (newData.shippingCharge !== formData.shippingCharge) setShippingCharge(newData.shippingCharge);
   };
 
   const refreshNotes = () => {
     const randomIndex = Math.floor(Math.random() * noteOptions.length);
     setNotes(noteOptions[randomIndex]);
+  };
+
+  const toggleTaxType = () => {
+    setTaxType(taxType === 'percentage' ? 'flat' : 'percentage');
+  };
+
+  const toggleDiscountType = () => {
+    setDiscountType(discountType === 'percentage' ? 'flat' : 'percentage');
+  };
+
+  const resetTax = () => {
+    setTaxValue(0);
+  };
+
+  const resetDiscount = () => {
+    setDiscountValue(0);
   };
 
   useEffect(() => {
@@ -123,9 +151,13 @@ const Index = () => {
         parsedData.yourCompany || { name: "", address: "", phone: "" }
       );
       setItems(parsedData.items || []);
-      settaxPercentage(parsedData.taxPercentage || 0);
+      setTaxType(parsedData.taxType || 'percentage');
+      setTaxValue(parsedData.taxValue || 0);
       setNotes(parsedData.notes || "");
       setSelectedCurrency(parsedData.selectedCurrency || "BDT");
+      setDiscountType(parsedData.discountType || 'percentage');
+      setDiscountValue(parsedData.discountValue || 0);
+      setShippingCharge(parsedData.shippingCharge || 0);
     } else {
       // If no saved data, set invoice number
       setInvoice((prev) => ({
@@ -143,12 +175,16 @@ const Index = () => {
       invoice,
       yourCompany,
       items,
-      taxPercentage,
+      taxType,
+      taxValue,
       taxAmount,
       subTotal,
       grandTotal,
       notes,
       selectedCurrency,
+      discountType,
+      discountValue,
+      shippingCharge
     };
     localStorage.setItem("formData", JSON.stringify(formData));
   }, [
@@ -157,12 +193,16 @@ const Index = () => {
     invoice,
     yourCompany,
     items,
-    taxPercentage,
+    taxType,
+    taxValue,
     notes,
     taxAmount,
     subTotal,
     grandTotal,
     selectedCurrency,
+    discountType,
+    discountValue,
+    shippingCharge
   ]);
 
   const handleInputChange = (setter) => (e) => {
@@ -198,32 +238,59 @@ const Index = () => {
     return calculatedSubTotal;
   };
 
-  const calculateTaxAmount = (subTotalValue) => {
-    const tax = (subTotalValue * taxPercentage) / 100;
+  const calculateTaxAmount = (subTotalValue, discountAmount) => {
+    const taxableAmount = subTotalValue - discountAmount;
+    let tax;
+    if (taxType === 'percentage') {
+      tax = (taxableAmount * taxValue) / 100;
+    } else {
+      tax = taxValue;
+    }
     setTaxAmount(tax);
     return tax;
   };
 
-  const calculateGrandTotal = (subTotalValue, taxAmountValue) => {
-    const total = parseFloat(subTotalValue) + parseFloat(taxAmountValue);
+  const calculateDiscountAmount = (subTotalValue) => {
+    let discount;
+    if (discountType === 'percentage') {
+      discount = (subTotalValue * discountValue) / 100;
+    } else {
+      discount = discountValue;
+    }
+    return discount > subTotalValue ? subTotalValue : discount;
+  };
+
+  const calculateGrandTotal = (subTotalValue, taxAmountValue, discountAmount, shippingChargeValue) => {
+    const total = (parseFloat(subTotalValue) - parseFloat(discountAmount)) + parseFloat(taxAmountValue) + parseFloat(shippingChargeValue);
     setGrandTotal(total);
     return total;
   };
 
   const updateTotals = () => {
     const currentSubTotal = calculateSubTotal();
-    const currentTaxAmount = calculateTaxAmount(currentSubTotal);
-    calculateGrandTotal(currentSubTotal, currentTaxAmount);
+    const currentDiscount = calculateDiscountAmount(currentSubTotal);
+    const currentTaxAmount = calculateTaxAmount(currentSubTotal, currentDiscount);
+    calculateGrandTotal(currentSubTotal, currentTaxAmount, currentDiscount, shippingCharge);
   };
 
-  const handleTaxPercentageChange = (e) => {
-    const taxRate = parseFloat(e.target.value) || 0;
-    settaxPercentage(taxRate);
+  const handleTaxChange = (e) => {
+    const value = parseFloat(e.target.value) || 0;
+    setTaxValue(value);
+  };
+
+  const handleDiscountChange = (e) => {
+    const value = parseFloat(e.target.value) || 0;
+    setDiscountValue(value);
+  };
+
+  const handleShippingChargeChange = (e) => {
+    const value = parseFloat(e.target.value) || 0;
+    setShippingCharge(value);
   };
 
   useEffect(() => {
     updateTotals();
-  }, [items, taxPercentage]);
+  }, [items, taxType, taxValue, discountType, discountValue, shippingCharge]);
 
   const handleTemplateClick = (templateNumber) => {
     const formData = {
@@ -232,12 +299,16 @@ const Index = () => {
       invoice,
       yourCompany,
       items,
-      taxPercentage,
+      taxType,
+      taxValue,
       taxAmount,
       subTotal,
       grandTotal,
       notes,
       selectedCurrency,
+      discountType,
+      discountValue,
+      shippingCharge
     };
     navigate("/template", {
       state: { formData, selectedTemplate: templateNumber },
@@ -283,36 +354,12 @@ const Index = () => {
         amount: 200,
         total: 200,
       },
-      {
-        name: "Product C",
-        description: "Another great product",
-        quantity: 3,
-        amount: 30,
-        total: 90,
-      },
-      {
-        name: "Service D",
-        description: "Another professional service",
-        quantity: 2,
-        amount: 150,
-        total: 300,
-      },
-      {
-        name: "Product E",
-        description: "Yet another product",
-        quantity: 1,
-        amount: 75,
-        total: 75,
-      },
-      {
-        name: "Service F",
-        description: "Yet another service",
-        quantity: 4,
-        amount: 100,
-        total: 400,
-      },
     ]);
-    settaxPercentage(10);
+    setTaxType('percentage');
+    setTaxValue(10);
+    setDiscountType('flat');
+    setDiscountValue(20);
+    setShippingCharge(15);
     calculateSubTotal();
     setNotes("Thank you for your business!");
   };
@@ -327,7 +374,11 @@ const Index = () => {
     });
     setYourCompany({ name: "", address: "", phone: "" });
     setItems([{ name: "", description: "", quantity: 0, amount: 0, total: 0 }]);
-    settaxPercentage(0);
+    setTaxType('percentage');
+    setTaxValue(0);
+    setDiscountType('percentage');
+    setDiscountValue(0);
+    setShippingCharge(0);
     setNotes("");
     localStorage.removeItem("formData");
   };
@@ -335,7 +386,7 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
       <Header />
-      
+
       <div className="flex-1 container mx-auto px-4 py-8 relative">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
@@ -371,9 +422,13 @@ const Index = () => {
                   invoice,
                   yourCompany,
                   items,
-                  taxPercentage,
+                  taxType,
+                  taxValue,
                   notes,
                   selectedCurrency,
+                  discountType,
+                  discountValue,
+                  shippingCharge
                 },
               },
             })
@@ -491,16 +546,76 @@ const Index = () => {
                     <span className="font-bold text-lg">{formatCurrency(subTotal, selectedCurrency)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="font-medium text-gray-700">Tax Rate (%):</span>
+                    <span className="font-medium text-gray-700">Discount:</span>
+                    <div className="flex items-center">
+
+                      <input
+                        type="number"
+                        value={discountValue}
+                        onChange={handleDiscountChange}
+                        className="w-24 p-2 border rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        min="0"
+                        step={discountType === 'percentage' ? "1" : "0.01"}
+                      />
+                      <button
+                        onClick={toggleDiscountType}
+                        className="p-2 bg-gray-200 rounded-r-lg hover:bg-gray-300 transition-colors duration-200"
+                        title="Toggle Discount Type"
+                      >
+                        {discountType === 'percentage' ? '%' : '$'}
+                      </button>
+                      <button
+                        onClick={resetDiscount}
+                        className="p-2 bg-gray-200 rounded-r-lg hover:bg-gray-300 transition-colors duration-200 ml-1"
+                        title="Clear Discount"
+                      >
+                        <FiX size={16} className="text-purple-600" />
+                      </button>
+
+                    </div>
+
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-700">Discount Amount:</span>
+                    <span className="font-bold text-lg">{formatCurrency(calculateDiscountAmount(subTotal), selectedCurrency)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-700">Shipping Charge:</span>
                     <input
                       type="number"
-                      value={taxPercentage}
-                      onChange={(e) => handleTaxPercentageChange(e)}
+                      value={shippingCharge}
+                      onChange={handleShippingChargeChange}
                       className="w-24 p-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       min="0"
-                      max="28"
-                      step="1"
+                      step="0.01"
                     />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-700">Tax:</span>
+                    <div className="flex items-center">
+                      <input
+                        type="number"
+                        value={taxValue}
+                        onChange={handleTaxChange}
+                        className="w-24 p-2 border rounded-l-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        min="0"
+                        step={taxType === 'percentage' ? "1" : "0.01"}
+                      />
+                      <button
+                        onClick={toggleTaxType}
+                        className="p-2 bg-gray-200 rounded-r-lg hover:bg-gray-300 transition-colors duration-200"
+                        title="Toggle Tax Type"
+                      >
+                        {taxType === 'percentage' ? '%' : '$'}
+                      </button>
+                      <button
+                        onClick={resetTax}
+                        className="p-2 bg-gray-200 rounded-r-lg hover:bg-gray-300 transition-colors duration-200 ml-1"
+                        title="Clear Tax"
+                      >
+                        <FiX size={16} className="text-purple-600" />
+                      </button>
+                    </div>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-gray-700">Tax Amount:</span>
@@ -548,13 +663,12 @@ const Index = () => {
                   onClick={() => handleTemplateClick(index + 1)}
                 >
                   <img
-                    src={`/assets/template${index + 1}-preview.png`}
+                    src={/assets/template${index + 1}-preview.png}
                     alt={template.name}
-                    className={`w-full ${
-                      template.name === "Template 10"
+                    className={`w-full ${template.name === "Template 10"
                         ? "h-[38px] w-[57px]"
                         : "h-32"
-                    } object-cover rounded-lg mb-3 shadow-sm`}
+                      } object-cover rounded-lg mb-3 shadow-sm`}
                   />
                   <p className="text-center font-semibold text-gray-700">{template.name}</p>
                 </div>
