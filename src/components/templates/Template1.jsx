@@ -3,7 +3,7 @@ import BaseTemplate from './BaseTemplate';
 import { formatCurrency } from '../../utils/formatCurrency';
 
 const Template1 = ({ data }) => {
-  const { billTo, shipTo, invoice, yourCompany, items, taxPercentage, taxAmount, subTotal, grandTotal, notes, selectedCurrency } = data;
+  const { billTo, shipTo, invoice, yourCompany, items, taxPercentage, taxAmount, subTotal, grandTotal, notes, selectedCurrency, discountValue, discountType, shippingCharge, taxValue, taxType } = data;
 
   return (
     <BaseTemplate data={data}>
@@ -87,12 +87,32 @@ const Template1 = ({ data }) => {
               <span>Subtotal:</span>
               <span>{formatCurrency(subTotal, selectedCurrency)}</span>
             </div>
+            <div className="flex justify-between mb-2">
+              <span>Discount:</span>
+              <span>{discountValue} {discountType === 'percentage' ? '%' : '$'}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span>Discount Amount:</span>
+              <span>{formatCurrency((discountType === 'percentage' ? (subTotal * discountValue) / 100 : discountValue > subTotal ? subTotal : discountValue), selectedCurrency)}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span>Shipping Charge:</span>
+              <span>{formatCurrency(shippingCharge, selectedCurrency)}</span>
+            </div>
             {taxPercentage > 0 && (
               <div className="flex justify-between mb-2">
                 <span>Tax ({taxPercentage}%):</span>
                 <span>{formatCurrency(taxAmount, selectedCurrency)}</span>
               </div>
             )}
+            <div className="flex justify-between mb-2">
+              <span>Tax:</span>
+              <span>{taxValue} {taxType === 'percentage' ? '%' : '$'}</span>
+            </div>
+            <div className="flex justify-between mb-2">
+              <span>Tax Amount:</span>
+              <span>{formatCurrency(taxAmount, selectedCurrency)}</span>
+            </div>
             <div className="flex justify-between font-bold">
               <span>Total:</span>
               <span>{formatCurrency(grandTotal, selectedCurrency)}</span>
